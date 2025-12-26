@@ -1,0 +1,4 @@
+data/load_data.py
+data/en_corpus.txt
+data/th_corpus.txt
+data/data.csv
