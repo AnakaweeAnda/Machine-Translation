@@ -15,16 +15,17 @@ class NMTDataset :
         return self.sp_en.decode(ids)
     def create_dataset(self,csv_path,batch_size=64,max_len=150) :
         df = pd.read_csv(csv_path)
-        df['en_text'] = df['en_text'].apply(self.encode_en)
-        df['th_text'] = df['th_text'].apply(self.encode_th)
+        df = df.dropna(subset=['en_text', 'th_text'])
+        df['en_text'] = df['en_text'].astype(str).apply(self.encode_en)
+        df['th_text'] = df['th_text'].astype(str).apply(self.encode_th)
         dataset = tf.data.Dataset.from_tensor_slices(( 
             tf.ragged.constant(df['en_text'].tolist()),
             tf.ragged.constant(df['th_text'].tolist())
             ))
         dataset = dataset.filter(
             lambda en,th : tf.logical_and(
-                en.shape[0] <= max_len,
-                th.shape[0] <= max_len
+                tf.shape(en)[0] <= max_len,
+                tf.shape(th)[0] <= max_len
             )
         )
         dataset = dataset.shuffle(10000).padded_batch(

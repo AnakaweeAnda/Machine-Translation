@@ -29,7 +29,7 @@ def attention(q,k,v,mask = None) :
     if mask :
         matmul_qk += (1-mask) * (-1e9)
     
-    attention_weights = tf.keras.activation.softmax(matmul_qk,axis=-1)
+    attention_weights = tf.keras.activations.softmax(matmul_qk,axis=-1)
     output = tf.matmul(attention_weights,v)
 
     return output,attention_weights
