@@ -24,6 +24,7 @@ class EncoderLayer(tf.keras.layers.Layer) :
         normal1 = self.layernorm1(x + mha_output)
 
         ffn_output = self.ffn(normal1)
+        ffn_output = self.dropout_ffn(ffn_output,training=training)
         encoder_layer_output = self.layernorm2(ffn_output + normal1)
         return encoder_layer_output
 
@@ -59,6 +60,7 @@ class Encoder(tf.keras.layers.Layer) :
 class DecoderLayer(tf.keras.layers.Layer) :
     def __init__(self,embedding_dim,num_heads,fully_connected_dim,
                  dropout_rate=0.1,layernorm_eps=1e-6) :
+        super(DecoderLayer, self).__init__()
         self.mha1 = tf.keras.layers.MultiHeadAttention(
             num_heads = num_heads,
             key_dim = embedding_dim,
@@ -87,15 +89,15 @@ class DecoderLayer(tf.keras.layers.Layer) :
         normal2 = self.layernorm2(mha_output2 + Q1)
 
         ffn_output = self.ffn(normal2)
-        ffn_output = self.dropout_ffn(ffn_output)
+        ffn_output = self.dropout_ffn(ffn_output,training=training)
 
-        deocder_layer_output = self.layernorm3(ffn_output + normal2)
-        return deocder_layer_output
+        decoder_layer_output = self.layernorm3(ffn_output + normal2)
+        return decoder_layer_output
 
 class Decoder(tf.keras.layers.Layer) :
     def __init__(self, num_layers, embedding_dim, num_heads, fully_connected_dim, target_vocab_size,
                maximum_position_encoding, dropout_rate=0.1, layernorm_eps=1e-6) :
-        super(Encoder,self).__init__()
+        super(Decoder,self).__init__()
 
         self.embedding_dim = embedding_dim
         self.num_layers = num_layers
@@ -122,37 +124,37 @@ class Decoder(tf.keras.layers.Layer) :
         return x
     
 
-    class Transformer(tf.keras.Model) :
+class Transformer(tf.keras.Model) :
 
-        def __init__(self, num_layers, embedding_dim, num_heads, fully_connected_dim, input_vocab_size, 
-               target_vocab_size, max_positional_encoding_input,
-               max_positional_encoding_target, dropout_rate=0.1, layernorm_eps=1e-6):
-            super(Transformer, self).__init__()
+    def __init__(self, num_layers, embedding_dim, num_heads, fully_connected_dim, input_vocab_size, 
+            target_vocab_size, max_positional_encoding_input,
+            max_positional_encoding_target, dropout_rate=0.1, layernorm_eps=1e-6):
+        super(Transformer, self).__init__()
 
-            self.encoder = Encoder(num_layers=num_layers,
-                                embedding_dim=embedding_dim,
-                                num_heads=num_heads,
-                                fully_connected_dim=fully_connected_dim,
-                                input_vocab_size=input_vocab_size,
-                                maximum_position_encoding=max_positional_encoding_input,
-                                dropout_rate=dropout_rate,
-                                layernorm_eps=layernorm_eps)
+        self.encoder = Encoder(num_layers=num_layers,
+                            embedding_dim=embedding_dim,
+                            num_heads=num_heads,
+                            fully_connected_dim=fully_connected_dim,
+                            input_vocab_size=input_vocab_size,
+                            maximum_position_encoding=max_positional_encoding_input,
+                            dropout_rate=dropout_rate,
+                            layernorm_eps=layernorm_eps)
 
-            self.decoder = Decoder(num_layers=num_layers, 
-                                embedding_dim=embedding_dim,
-                                num_heads=num_heads,
-                                fully_connected_dim=fully_connected_dim,
-                                target_vocab_size=target_vocab_size, 
-                                maximum_position_encoding=max_positional_encoding_target,
-                                dropout_rate=dropout_rate,
-                                layernorm_eps=layernorm_eps)
+        self.decoder = Decoder(num_layers=num_layers, 
+                            embedding_dim=embedding_dim,
+                            num_heads=num_heads,
+                            fully_connected_dim=fully_connected_dim,
+                            target_vocab_size=target_vocab_size, 
+                            maximum_position_encoding=max_positional_encoding_target,
+                            dropout_rate=dropout_rate,
+                            layernorm_eps=layernorm_eps)
 
-            self.final_layer = tf.keras.layers.Dense(target_vocab_size,activation='softmax')
+        self.final_layer = tf.keras.layers.Dense(target_vocab_size,activation='softmax')
 
-        def call(self,input_sentece,output_sentence,training,enc_padding_mask,look_ahead_mask,dec_padding_mask) :
-            enc_output = self.encoder(input_sentece,training,enc_padding_mask)
-            dec_output  = self.decoder(output_sentence,enc_output,training,look_ahead_mask,dec_padding_mask)
+    def call(self,input_sentence,output_sentence,training,enc_padding_mask,look_ahead_mask,dec_padding_mask) :
+        enc_output = self.encoder(input_sentence,training,enc_padding_mask)
+        dec_output  = self.decoder(output_sentence,enc_output,training,look_ahead_mask,dec_padding_mask)
 
-            final_output = self.final_layer(dec_output)
-            return final_output
+        final_output = self.final_layer(dec_output)
+        return final_output
         
